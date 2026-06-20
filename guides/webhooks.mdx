@@ -1,0 +1,62 @@
+---
+title: Webhooks
+description: Receba notificações em tempo real de eventos na plataforma
+---
+
+## O que são webhooks
+
+Webhooks permitem que a Cordialy notifique seu sistema quando eventos acontecem — sem precisar fazer polling.
+
+Configure em **Plataforma → Integrações → Webhooks**.
+
+## Eventos disponíveis
+
+| Evento | Quando dispara |
+|---|---|
+| `lead.created` | Novo lead criado |
+| `lead.status_changed` | Status do lead alterado |
+| `message.received` | Lead enviou mensagem |
+| `message.sent` | IA ou consultor enviou mensagem |
+| `session.started` | Nova sessão de atendimento iniciada |
+| `session.ended` | Sessão encerrada |
+| `followup.sent` | Follow-up disparado |
+
+## Formato do payload
+
+```json
+{
+  "event": "lead.status_changed",
+  "timestamp": "2026-06-20T14:30:00.000Z",
+  "store_id": "...",
+  "data": {
+    "lead_id": "...",
+    "previous_status": "pending",
+    "new_status": "converted"
+  }
+}
+```
+
+## Segurança
+
+Cada requisição inclui o header `X-Cordialy-Signature` com um HMAC-SHA256 do payload assinado com o seu **Webhook Secret**.
+
+Valide sempre a assinatura antes de processar:
+
+```typescript
+import crypto from 'crypto';
+
+function verifyWebhook(payload: string, signature: string, secret: string): boolean {
+  const expected = crypto
+    .createHmac('sha256', secret)
+    .update(payload)
+    .digest('hex');
+  return crypto.timingSafeEqual(
+    Buffer.from(signature),
+    Buffer.from(expected)
+  );
+}
+```
+
+## Retry automático
+
+Se seu endpoint retornar um status diferente de `2xx`, a Cordialy tentará reenviar o evento com backoff exponencial por até 24 horas.

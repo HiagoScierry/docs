@@ -1,0 +1,46 @@
+---
+title: Enviar Mensagens
+description: Como enviar mensagens via API e como elas aparecem na plataforma
+---
+
+## Enviar mensagem de texto
+
+```bash
+curl -X POST https://api.cordialy.ai/integrations/v1/leads/LEAD_ID/messages \
+  -H "X-API-Key: SUA_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"message": "Olá! Sua solicitação foi processada com sucesso."}'
+```
+
+A mensagem é entregue ao lead via WhatsApp e salva no histórico com `source: "api"`.
+
+## Como aparece na plataforma
+
+Mensagens enviadas via API são destacadas em **roxo** na conversa com a tag **Via API**, diferenciando de mensagens da IA (azul) e do consultor (verde).
+
+## Consultar histórico de mensagens
+
+```bash
+curl "https://api.cordialy.ai/integrations/v1/leads/LEAD_ID/messages" \
+  -H "X-API-Key: SUA_KEY"
+```
+
+Para buscar apenas mensagens recentes:
+
+```bash
+curl "https://api.cordialy.ai/integrations/v1/leads/LEAD_ID/messages?from=2026-06-01T00:00:00Z" \
+  -H "X-API-Key: SUA_KEY"
+```
+
+## Campos de resposta
+
+| Campo | Descrição |
+|---|---|
+| `role` | `user` (lead), `assistant` (IA), `agent` (consultor) |
+| `source` | `whatsapp`, `call`, `api` |
+| `media_type` | `image`, `video`, `audio`, `document` ou `null` |
+| `session_id` | ID da sessão de atendimento associada |
+
+<Warning>
+  O envio de mídia (imagens, documentos) via API ainda não é suportado. Use a plataforma para enviar arquivos.
+</Warning>

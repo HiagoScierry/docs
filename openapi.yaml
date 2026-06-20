@@ -1,0 +1,723 @@
+openapi: 3.1.0
+info:
+  title: Cordialy API
+  description: API pública para integração com a plataforma Cordialy de atendimento via WhatsApp com IA.
+  version: 1.0.0
+  contact:
+    email: suporte@cordialy.ai
+
+servers:
+  - url: https://api.cordialy.ai/integrations/v1
+    description: Produção
+
+security:
+  - ApiKeyAuth: []
+
+components:
+  securitySchemes:
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-API-Key
+
+  schemas:
+    Lead:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        store_id:
+          type: string
+          format: uuid
+        name:
+          type: string
+          nullable: true
+        customer_phone:
+          type: string
+        status:
+          type: string
+          enum: [pending, in_progress, converted, lost]
+        seller_id:
+          type: string
+          format: uuid
+          nullable: true
+        interaction_count:
+          type: integer
+        ai_paused_until:
+          type: string
+          format: date-time
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    ChatMessage:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        lead_id:
+          type: string
+          format: uuid
+        role:
+          type: string
+          enum: [user, assistant, agent]
+        content:
+          type: string
+        source:
+          type: string
+          enum: [whatsapp, call, api]
+        media_type:
+          type: string
+          enum: [image, video, audio, document]
+          nullable: true
+        media_url:
+          type: string
+          nullable: true
+        session_id:
+          type: string
+          format: uuid
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+
+    LeadSession:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        lead_id:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum: [active, converted, lost, abandoned]
+        started_at:
+          type: string
+          format: date-time
+        ended_at:
+          type: string
+          format: date-time
+          nullable: true
+
+    AgentCondition:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        condition_type:
+          type: string
+          enum: [lead_status, interaction_count, message_contains, media_type, time_of_day, conversation_stage, last_agent_id, sentiment, has_open_appointment]
+        operator:
+          type: string
+          enum: ["=", "!=", ">", "<", ">=", "<=", contains, not_contains]
+        value:
+          type: string
+
+    AgentConditionGroup:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        group_index:
+          type: integer
+        logical_operator:
+          type: string
+          enum: [AND]
+        conditions:
+          type: array
+          items:
+            $ref: '#/components/schemas/AgentCondition'
+
+    Agent:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        model:
+          type: string
+          enum: [auto, gemini, openai]
+        priority:
+          type: integer
+        is_active:
+          type: boolean
+        is_default:
+          type: boolean
+        voice_id:
+          type: string
+          nullable: true
+        audio_response_enabled:
+          type: boolean
+        condition_groups:
+          type: array
+          items:
+            $ref: '#/components/schemas/AgentConditionGroup'
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    FollowupConfig:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        is_active:
+          type: boolean
+        trigger_type:
+          type: string
+          enum: [silence, post_handover, post_contact]
+        trigger_delay_minutes:
+          type: integer
+          description: Tempo em minutos após o trigger para disparar o follow-up
+        followup_type:
+          type: string
+          enum: [fixed_message, ai_objective]
+        message:
+          type: string
+          nullable: true
+          description: Mensagem fixa (quando followup_type = fixed_message)
+        objective:
+          type: string
+          nullable: true
+          description: Objetivo para a IA (quando followup_type = ai_objective)
+        max_attempts:
+          type: integer
+        min_interval_minutes:
+          type: integer
+        created_at:
+          type: string
+          format: date-time
+
+    ScheduledFollowup:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        lead_id:
+          type: string
+          format: uuid
+        config_id:
+          type: string
+          format: uuid
+          nullable: true
+        status:
+          type: string
+          enum: [pending, sent, failed, cancelled]
+        followup_type:
+          type: string
+          enum: [fixed_message, ai_objective]
+        scheduled_at:
+          type: string
+          format: date-time
+        attempt_number:
+          type: integer
+        message_sent:
+          type: string
+          nullable: true
+        sent_at:
+          type: string
+          format: date-time
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+
+    Document:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        title:
+          type: string
+        content:
+          type: string
+        is_active:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+        message:
+          type: string
+
+paths:
+  # ── Leads ──────────────────────────────────────────────────────────────────
+
+  /leads:
+    get:
+      operationId: listLeads
+      summary: Listar leads
+      description: Retorna todos os leads da loja com suporte a filtros e paginação.
+      tags: [Leads]
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [pending, in_progress, converted, lost]
+        - name: seller_id
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - name: since
+          in: query
+          description: Retorna leads criados/atualizados após esta data (ISO 8601)
+          schema:
+            type: string
+            format: date-time
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 50
+            maximum: 200
+      responses:
+        '200':
+          description: Lista de leads
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Lead'
+                  total:
+                    type: integer
+                  page:
+                    type: integer
+                  limit:
+                    type: integer
+
+    post:
+      operationId: createLead
+      summary: Criar lead
+      description: Cria um novo lead na loja. Se já existir um lead com o mesmo telefone, retorna o existente.
+      tags: [Leads]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [customer_phone]
+              properties:
+                customer_phone:
+                  type: string
+                  description: Número no formato E.164 (ex: 5511999998888)
+                  example: "5511999998888"
+                name:
+                  type: string
+                  example: "João Silva"
+                status:
+                  type: string
+                  enum: [pending, in_progress, converted, lost]
+                  default: pending
+      responses:
+        '201':
+          description: Lead criado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Lead'
+
+  /leads/{leadId}:
+    get:
+      operationId: getLead
+      summary: Buscar lead
+      tags: [Leads]
+      parameters:
+        - name: leadId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Lead encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Lead'
+        '404':
+          description: Lead não encontrado
+
+    patch:
+      operationId: updateLead
+      summary: Atualizar lead
+      tags: [Leads]
+      parameters:
+        - name: leadId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                status:
+                  type: string
+                  enum: [pending, in_progress, converted, lost]
+                seller_id:
+                  type: string
+                  format: uuid
+                  nullable: true
+      responses:
+        '200':
+          description: Lead atualizado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Lead'
+
+  /leads/{leadId}/messages:
+    get:
+      operationId: listLeadMessages
+      summary: Listar mensagens do lead
+      tags: [Mensagens]
+      parameters:
+        - name: leadId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: from
+          in: query
+          description: Retorna mensagens a partir desta data (ISO 8601)
+          schema:
+            type: string
+            format: date-time
+      responses:
+        '200':
+          description: Lista de mensagens
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ChatMessage'
+
+    post:
+      operationId: sendMessage
+      summary: Enviar mensagem
+      description: Envia uma mensagem de texto ao lead via WhatsApp e salva no histórico com `source = api`.
+      tags: [Mensagens]
+      parameters:
+        - name: leadId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [message]
+              properties:
+                message:
+                  type: string
+                  example: "Olá! Como posso ajudar?"
+      responses:
+        '200':
+          description: Mensagem enviada
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  sent:
+                    type: boolean
+                    example: true
+
+  /leads/{leadId}/sessions:
+    get:
+      operationId: listLeadSessions
+      summary: Listar sessões do lead
+      tags: [Mensagens]
+      parameters:
+        - name: leadId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Lista de sessões
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/LeadSession'
+
+  # ── Agents ─────────────────────────────────────────────────────────────────
+
+  /agents:
+    get:
+      operationId: listAgents
+      summary: Listar agentes
+      description: Retorna todos os agentes ativos da loja com seus grupos de condições.
+      tags: [Agentes]
+      responses:
+        '200':
+          description: Lista de agentes
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Agent'
+
+  /agents/{agentId}:
+    get:
+      operationId: getAgent
+      summary: Buscar agente
+      tags: [Agentes]
+      parameters:
+        - name: agentId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Agente encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Agent'
+
+  # ── Followups ──────────────────────────────────────────────────────────────
+
+  /followups/configs:
+    get:
+      operationId: listFollowupConfigs
+      summary: Listar configurações de follow-up
+      description: Retorna todas as regras de follow-up configuradas para a loja.
+      tags: [Follow-up]
+      responses:
+        '200':
+          description: Lista de configurações
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/FollowupConfig'
+
+  /followups/scheduled:
+    get:
+      operationId: listScheduledFollowups
+      summary: Listar follow-ups agendados
+      description: Sem `lead_id` retorna todos os follow-ups pendentes da loja. Com `lead_id` retorna todos os follow-ups do lead (qualquer status).
+      tags: [Follow-up]
+      parameters:
+        - name: lead_id
+          in: query
+          description: Filtrar por lead específico
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Lista de follow-ups
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ScheduledFollowup'
+
+    post:
+      operationId: scheduleFollowup
+      summary: Agendar follow-up
+      description: Agenda um follow-up manualmente para um lead com base em uma configuração existente.
+      tags: [Follow-up]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [lead_id, config_id]
+              properties:
+                lead_id:
+                  type: string
+                  format: uuid
+                config_id:
+                  type: string
+                  format: uuid
+                  description: ID de uma FollowupConfig ativa
+                scheduled_at:
+                  type: string
+                  format: date-time
+                  description: Quando disparar. Se omitido, usa agora + trigger_delay_minutes da config.
+      responses:
+        '201':
+          description: Follow-up agendado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ScheduledFollowup'
+
+  /followups/scheduled/{followupId}:
+    delete:
+      operationId: cancelFollowup
+      summary: Cancelar follow-up
+      description: Cancela um follow-up com status `pending`. Retorna erro se já foi enviado, falhou ou cancelado.
+      tags: [Follow-up]
+      parameters:
+        - name: followupId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Follow-up cancelado
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  cancelled:
+                    type: boolean
+                  id:
+                    type: string
+                    format: uuid
+
+  # ── Knowledge ──────────────────────────────────────────────────────────────
+
+  /knowledge/documents:
+    get:
+      operationId: listDocuments
+      summary: Listar documentos
+      description: Retorna a base de conhecimento da loja usada pelo agente de IA (RAG).
+      tags: [Base de conhecimento]
+      responses:
+        '200':
+          description: Lista de documentos
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Document'
+
+  /knowledge/documents/{documentId}:
+    get:
+      operationId: getDocument
+      summary: Buscar documento
+      tags: [Base de conhecimento]
+      parameters:
+        - name: documentId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Documento encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Document'
+
+  # ── Reports ────────────────────────────────────────────────────────────────
+
+  /reports/leads:
+    get:
+      operationId: getLeadReport
+      summary: Relatório por lead
+      tags: [Relatórios]
+      parameters:
+        - name: lead_id
+          in: query
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Relatório do lead
+
+  /reports/summary:
+    get:
+      operationId: getSummaryReport
+      summary: Sumário da loja
+      description: Métricas agregadas de atendimento da loja.
+      tags: [Relatórios]
+      parameters:
+        - name: from
+          in: query
+          schema:
+            type: string
+            format: date-time
+        - name: to
+          in: query
+          schema:
+            type: string
+            format: date-time
+      responses:
+        '200':
+          description: Sumário de métricas
+
+  # ── Store ──────────────────────────────────────────────────────────────────
+
+  /store:
+    get:
+      operationId: getStore
+      summary: Dados da loja
+      description: Retorna as informações públicas da loja associada à API key.
+      tags: [Loja]
+      responses:
+        '200':
+          description: Dados da loja

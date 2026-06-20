@@ -1,0 +1,111 @@
+{
+  "$schema": "https://mintlify.com/schema.json",
+  "name": "Cordialy",
+  "logo": {
+    "dark": "/logo/dark.svg",
+    "light": "/logo/light.svg"
+  },
+  "favicon": "/logo/favicon.svg",
+  "colors": {
+    "primary": "#7C3AED",
+    "light": "#A78BFA",
+    "dark": "#5B21B6",
+    "background": {
+      "dark": "#0F0A1E"
+    }
+  },
+  "topbarLinks": [
+    {
+      "name": "Suporte",
+      "url": "mailto:suporte@cordialy.ai"
+    }
+  ],
+  "topbarCtaButton": {
+    "name": "Acessar plataforma",
+    "url": "https://app.cordialy.ai"
+  },
+  "api": {
+    "baseUrl": "https://api.cordialy.ai/integrations/v1",
+    "auth": {
+      "method": "key",
+      "name": "X-API-Key"
+    }
+  },
+  "openapi": "openapi.yaml",
+  "navigation": [
+    {
+      "group": "Início",
+      "pages": [
+        "introduction",
+        "authentication",
+        "quickstart"
+      ]
+    },
+    {
+      "group": "Guias",
+      "pages": [
+        "guides/leads",
+        "guides/messaging",
+        "guides/followups",
+        "guides/agents",
+        "guides/webhooks"
+      ]
+    },
+    {
+      "group": "Leads",
+      "pages": [
+        "api-reference/leads/list",
+        "api-reference/leads/create",
+        "api-reference/leads/get",
+        "api-reference/leads/update"
+      ]
+    },
+    {
+      "group": "Mensagens",
+      "pages": [
+        "api-reference/leads/list-messages",
+        "api-reference/leads/send-message",
+        "api-reference/leads/list-sessions"
+      ]
+    },
+    {
+      "group": "Agentes",
+      "pages": [
+        "api-reference/agents/list",
+        "api-reference/agents/get"
+      ]
+    },
+    {
+      "group": "Follow-up",
+      "pages": [
+        "api-reference/followups/list-configs",
+        "api-reference/followups/list-scheduled",
+        "api-reference/followups/schedule",
+        "api-reference/followups/cancel"
+      ]
+    },
+    {
+      "group": "Base de conhecimento",
+      "pages": [
+        "api-reference/knowledge/list",
+        "api-reference/knowledge/get"
+      ]
+    },
+    {
+      "group": "Relatórios",
+      "pages": [
+        "api-reference/reports/leads",
+        "api-reference/reports/summary"
+      ]
+    },
+    {
+      "group": "Loja",
+      "pages": [
+        "api-reference/store/get"
+      ]
+    }
+  ],
+  "footerSocials": {
+    "website": "https://cordialy.ai"
+  }
+}

@@ -1,0 +1,55 @@
+---
+title: Gerenciar Leads
+description: Como criar, atualizar e consultar leads via API
+---
+
+## Ciclo de vida de um lead
+
+```
+pending → in_progress → converted
+                     ↘ lost
+```
+
+| Status | Descrição |
+|---|---|
+| `pending` | Lead recém-criado, ainda não atendido |
+| `in_progress` | Em atendimento ativo |
+| `converted` | Negócio fechado / objetivo atingido |
+| `lost` | Lead perdido |
+
+## Sincronizar leads do seu CRM
+
+Se você já tem leads em outro sistema, crie-os na Cordialy ao mesmo tempo:
+
+```bash
+curl -X POST https://api.cordialy.ai/integrations/v1/leads \
+  -H "X-API-Key: SUA_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "customer_phone": "5511999998888",
+    "name": "Maria Souza",
+    "status": "in_progress"
+  }'
+```
+
+<Info>
+  Se já existir um lead com o mesmo telefone, a API retorna o existente sem criar duplicata.
+</Info>
+
+## Filtrar leads por status
+
+```bash
+curl "https://api.cordialy.ai/integrations/v1/leads?status=pending&limit=100" \
+  -H "X-API-Key: SUA_KEY"
+```
+
+## Atualizar status após conversão
+
+Quando o lead converter no seu sistema, reflita isso na Cordialy:
+
+```bash
+curl -X PATCH https://api.cordialy.ai/integrations/v1/leads/LEAD_ID \
+  -H "X-API-Key: SUA_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"status": "converted"}'
+```

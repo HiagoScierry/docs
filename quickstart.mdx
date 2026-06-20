@@ -1,0 +1,55 @@
+---
+title: Quickstart
+description: Envie sua primeira mensagem em menos de 5 minutos
+---
+
+## 1. Pegue sua API key
+
+Gere uma key em **Plataforma → Integrações → API Keys**.
+
+## 2. Crie ou encontre um lead
+
+<CodeGroup>
+```bash Criar novo lead
+curl -X POST https://api.cordialy.ai/integrations/v1/leads \
+  -H "X-API-Key: SUA_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"customer_phone": "5511999998888", "name": "João Silva"}'
+```
+
+```bash Listar leads existentes
+curl https://api.cordialy.ai/integrations/v1/leads \
+  -H "X-API-Key: SUA_KEY"
+```
+</CodeGroup>
+
+Guarde o `id` retornado.
+
+## 3. Envie uma mensagem
+
+```bash
+curl -X POST https://api.cordialy.ai/integrations/v1/leads/LEAD_ID/messages \
+  -H "X-API-Key: SUA_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"message": "Olá! Temos uma oferta especial para você."}'
+```
+
+A mensagem é entregue via WhatsApp e aparece destacada na plataforma com a tag **Via API**.
+
+## 4. Consulte o histórico
+
+```bash
+curl https://api.cordialy.ai/integrations/v1/leads/LEAD_ID/messages \
+  -H "X-API-Key: SUA_KEY"
+```
+
+## Próximos passos
+
+<CardGroup cols={2}>
+  <Card title="Automatizar follow-ups" icon="clock" href="/guides/followups">
+    Programe mensagens automáticas com base em inatividade ou eventos.
+  </Card>
+  <Card title="Receber eventos via Webhook" icon="webhook" href="/guides/webhooks">
+    Seja notificado quando leads responderem ou mudarem de status.
+  </Card>
+</CardGroup>

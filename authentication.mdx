@@ -1,0 +1,50 @@
+---
+title: Autenticação
+description: Como autenticar na API pública da Cordialy
+---
+
+## API Key
+
+A Cordialy usa **API Keys** para autenticar requisições. Cada loja pode ter múltiplas keys com permissões diferentes.
+
+### Como obter
+
+1. Acesse a plataforma em [app.cordialy.ai](https://app.cordialy.ai)
+2. Vá em **Integrações → API Keys**
+3. Clique em **Nova chave**
+4. Copie a chave gerada — ela não será exibida novamente
+
+### Como usar
+
+Inclua a chave no header `X-API-Key` em todas as requisições:
+
+```bash
+curl https://api.cordialy.ai/integrations/v1/leads \
+  -H "X-API-Key: sua_api_key_aqui"
+```
+
+### Verificar autenticação
+
+```bash
+curl https://api.cordialy.ai/integrations/v1/store \
+  -H "X-API-Key: sua_api_key_aqui"
+```
+
+Se retornar `200` com os dados da loja, sua key está funcionando.
+
+## Erros de autenticação
+
+| Código | Motivo |
+|---|---|
+| `401 Unauthorized` | Header `X-API-Key` ausente ou inválido |
+| `403 Forbidden` | Key válida mas sem permissão para o recurso (plano insuficiente) |
+
+## Segurança
+
+<Warning>
+  Nunca exponha sua API key em código frontend, repositórios públicos ou logs. Trate-a como uma senha.
+</Warning>
+
+- Use variáveis de ambiente para armazenar a key
+- Crie keys separadas para ambientes diferentes (staging, produção)
+- Revogue keys comprometidas imediatamente na plataforma

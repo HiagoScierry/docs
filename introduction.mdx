@@ -1,0 +1,50 @@
+---
+title: Introdução
+description: Integre seu sistema com a Cordialy via API REST
+---
+
+A **API pública da Cordialy** permite que você conecte qualquer sistema externo à plataforma de atendimento via WhatsApp com IA.
+
+## O que você pode fazer
+
+<CardGroup cols={2}>
+  <Card title="Gerenciar Leads" icon="users" href="/api-reference/leads/list">
+    Crie, atualize e consulte leads diretamente do seu CRM ou sistema próprio.
+  </Card>
+  <Card title="Enviar Mensagens" icon="message" href="/api-reference/leads/send-message">
+    Envie mensagens via WhatsApp para qualquer lead. Aparecem destacadas na plataforma.
+  </Card>
+  <Card title="Automatizar Follow-ups" icon="clock" href="/api-reference/followups/schedule">
+    Agende ou cancele follow-ups programaticamente com base em eventos do seu sistema.
+  </Card>
+  <Card title="Consultar Relatórios" icon="chart-bar" href="/api-reference/reports/summary">
+    Acesse métricas de atendimento para integrar com seu BI ou dashboard.
+  </Card>
+</CardGroup>
+
+## Base URL
+
+```
+https://api.cordialy.ai/integrations/v1
+```
+
+## Autenticação
+
+Todas as requisições precisam de uma API key no header:
+
+```bash
+X-API-Key: sua_api_key_aqui
+```
+
+Acesse **Plataforma → Integrações → API Keys** para gerar sua chave.
+
+## Planos e limites
+
+| Recurso | Growth | Enterprise | Enterprise Plus |
+|---|---|---|---|
+| Leads | ✅ | ✅ | ✅ |
+| Mensagens | ✅ | ✅ | ✅ |
+| Follow-ups | ✅ | ✅ | ✅ |
+| Agentes | — | ✅ | ✅ |
+| Relatórios | — | ✅ | ✅ |
+| Webhooks | — | ✅ | ✅ |

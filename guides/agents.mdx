@@ -1,0 +1,67 @@
+---
+title: Agentes de IA
+description: Como consultar agentes e entender as condições de ativação
+---
+
+## O que são agentes
+
+Cada loja pode ter múltiplos agentes de IA com personalidades e regras diferentes. O sistema escolhe automaticamente qual agente atende cada lead com base nas **condições de ativação**.
+
+## Consultar agentes ativos
+
+```bash
+curl https://api.cordialy.ai/integrations/v1/agents \
+  -H "X-API-Key: SUA_KEY"
+```
+
+## Estrutura de um agente
+
+```json
+{
+  "id": "abc-123",
+  "name": "Agente de Vendas",
+  "model": "openai",
+  "priority": 1,
+  "is_active": true,
+  "is_default": false,
+  "condition_groups": [
+    {
+      "group_index": 0,
+      "logical_operator": "AND",
+      "conditions": [
+        {
+          "condition_type": "lead_status",
+          "operator": "=",
+          "value": "in_progress"
+        },
+        {
+          "condition_type": "interaction_count",
+          "operator": ">",
+          "value": "3"
+        }
+      ]
+    }
+  ]
+}
+```
+
+## Como a seleção funciona
+
+1. Agentes são testados em ordem de **prioridade** (menor número = maior prioridade)
+2. Dentro de cada `condition_group`, todas as condições devem ser verdadeiras (**AND**)
+3. Entre grupos, basta um ser verdadeiro (**OR**)
+4. Se nenhum agente bater, o agente com `is_default: true` é usado
+
+## Usando `last_agent_id` para encadeamento
+
+Para encadear agentes em sequência, use a condição `last_agent_id`:
+
+```json
+{
+  "condition_type": "last_agent_id",
+  "operator": "=",
+  "value": "ID_DO_AGENTE_ANTERIOR"
+}
+```
+
+Isso permite criar fluxos como: Triagem → Vendas → Fechamento.

@@ -1,0 +1,64 @@
+---
+title: Follow-ups
+description: Como agendar e cancelar follow-ups automaticamente via API
+---
+
+## Como funciona
+
+Follow-ups são mensagens automáticas disparadas pela IA com base em regras configuradas na plataforma. Via API você pode:
+
+- **Listar** regras ativas e follow-ups agendados
+- **Agendar** um follow-up manualmente para um lead específico
+- **Cancelar** um follow-up pendente
+
+## 1. Veja as configs disponíveis
+
+```bash
+curl https://api.cordialy.ai/integrations/v1/followups/configs \
+  -H "X-API-Key: SUA_KEY"
+```
+
+Guarde o `id` da config que deseja usar.
+
+## 2. Agende um follow-up
+
+```bash
+curl -X POST https://api.cordialy.ai/integrations/v1/followups/scheduled \
+  -H "X-API-Key: SUA_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "lead_id": "LEAD_ID",
+    "config_id": "CONFIG_ID",
+    "scheduled_at": "2026-06-25T10:00:00.000Z"
+  }'
+```
+
+Se `scheduled_at` for omitido, usa `agora + trigger_delay_minutes` da config.
+
+## 3. Cancele se necessário
+
+Por exemplo, quando o lead já converteu no seu sistema:
+
+```bash
+curl -X DELETE https://api.cordialy.ai/integrations/v1/followups/scheduled/FOLLOWUP_ID \
+  -H "X-API-Key: SUA_KEY"
+```
+
+<Info>
+  Só é possível cancelar follow-ups com status `pending`. Se já foi enviado, não há reversão.
+</Info>
+
+## Tipos de trigger
+
+| Trigger | Quando dispara |
+|---|---|
+| `silence` | Lead ficou X minutos sem responder |
+| `post_handover` | Após transferência para consultor |
+| `post_contact` | Após primeiro contato |
+
+## Tipos de conteúdo
+
+| Tipo | Comportamento |
+|---|---|
+| `fixed_message` | Envia a mensagem exata configurada no campo `message` |
+| `ai_objective` | A IA gera a mensagem com base no `objective` |
