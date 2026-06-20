@@ -1,0 +1,165 @@
+---
+title: Colaboradores
+description: Como gerenciar colaboradores e entender sua relação com os leads
+---
+
+## O que são colaboradores
+
+Colaboradores (sellers) são os consultores e atendentes da sua loja que interagem com os leads na plataforma. Via API você pode gerenciar a equipe completa — criar, atualizar, ativar/desativar e remover colaboradores.
+
+## Relação com leads
+
+Cada lead pode ter um colaborador responsável (`seller_id`). Essa atribuição:
+- Aparece na plataforma para indicar quem está cuidando do lead
+- Filtra leads por responsável nos relatórios
+- Identifica mensagens enviadas pelo consultor no histórico da conversa
+
+## Listar colaboradores
+
+```bash
+curl https://api.cordialy.ai/integrations/v1/sellers \
+  -H "X-API-Key: SUA_KEY"
+```
+
+```json
+[
+  {
+    "id": "seller-001",
+    "name": "Ana Lima",
+    "whatsapp_id": "5511988887777",
+    "is_active": true
+  },
+  {
+    "id": "seller-002",
+    "name": "Carlos Mendes",
+    "whatsapp_id": "5511977776666",
+    "is_active": true
+  }
+]
+```
+
+## Criar colaborador
+
+<CodeGroup>
+```bash cURL
+curl -X POST https://api.cordialy.ai/integrations/v1/sellers \
+  -H "X-API-Key: SUA_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Fernanda Costa",
+    "whatsapp_id": "5511966665555"
+  }'
+```
+
+```typescript Node.js
+const seller = await fetch('https://api.cordialy.ai/integrations/v1/sellers', {
+  method: 'POST',
+  headers: { 'X-API-Key': process.env.CORDIALY_API_KEY, 'Content-Type': 'application/json' },
+  body: JSON.stringify({
+    name: 'Fernanda Costa',
+    whatsapp_id: '5511966665555',
+  }),
+}).then(r => r.json());
+```
+</CodeGroup>
+
+## Atribuir lead a um colaborador
+
+Use o `seller_id` retornado ao atualizar um lead:
+
+```bash
+curl -X PATCH https://api.cordialy.ai/integrations/v1/leads/LEAD_ID \
+  -H "X-API-Key: SUA_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"seller_id": "seller-001"}'
+```
+
+Para remover a atribuição:
+
+```bash
+curl -X PATCH https://api.cordialy.ai/integrations/v1/leads/LEAD_ID \
+  -H "X-API-Key: SUA_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"seller_id": null}'
+```
+
+## Filtrar leads por colaborador
+
+```bash
+curl "https://api.cordialy.ai/integrations/v1/leads?seller_id=seller-001" \
+  -H "X-API-Key: SUA_KEY"
+```
+
+## Ativar / desativar colaborador
+
+Desativar é preferível a deletar — mantém o histórico intacto:
+
+```bash
+# Desativar
+curl -X PATCH https://api.cordialy.ai/integrations/v1/sellers/SELLER_ID \
+  -H "X-API-Key: SUA_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"is_active": false}'
+
+# Reativar
+curl -X PATCH https://api.cordialy.ai/integrations/v1/sellers/SELLER_ID \
+  -H "X-API-Key: SUA_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"is_active": true}'
+```
+
+## Remover colaborador
+
+```bash
+curl -X DELETE https://api.cordialy.ai/integrations/v1/sellers/SELLER_ID \
+  -H "X-API-Key: SUA_KEY"
+```
+
+<Warning>
+  Ao remover um colaborador, os leads atribuídos a ele ficam sem responsável (`seller_id = null`). Prefira desativar se quiser manter o histórico de atribuições.
+</Warning>
+
+## Padrões de integração
+
+<AccordionGroup>
+  <Accordion title="Sincronizar equipe do RH">
+    Quando um colaborador é contratado ou demitido no sistema de RH, reflita na Cordialy:
+
+    ```typescript
+    // Novo colaborador contratado
+    async function onColaboradorContratado(funcionario) {
+      await fetch('https://api.cordialy.ai/integrations/v1/sellers', {
+        method: 'POST',
+        headers: { 'X-API-Key': process.env.CORDIALY_API_KEY, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: funcionario.nome, whatsapp_id: funcionario.whatsapp }),
+      });
+    }
+
+    // Colaborador desligado
+    async function onColaboradorDesligado(sellerId) {
+      await fetch(`https://api.cordialy.ai/integrations/v1/sellers/${sellerId}`, {
+        method: 'PATCH',
+        headers: { 'X-API-Key': process.env.CORDIALY_API_KEY, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ is_active: false }),
+      });
+    }
+    ```
+  </Accordion>
+  <Accordion title="Distribuir leads automaticamente">
+    Ao criar um lead no seu CRM, atribua um colaborador com base em regras de distribuição:
+
+    ```typescript
+    async function distribuirLead(lead, sellers) {
+      // Round-robin simples
+      const index = lead.sequencia % sellers.length;
+      const seller = sellers[index];
+
+      await fetch(`https://api.cordialy.ai/integrations/v1/leads/${lead.id}`, {
+        method: 'PATCH',
+        headers: { 'X-API-Key': process.env.CORDIALY_API_KEY, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ seller_id: seller.id }),
+      });
+    }
+    ```
+  </Accordion>
+</AccordionGroup>

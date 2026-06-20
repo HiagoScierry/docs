@@ -293,6 +293,23 @@ components:
           type: string
           format: date-time
 
+    Seller:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Identificador único do colaborador
+        name:
+          type: string
+          description: Nome do colaborador
+        whatsapp_id:
+          type: string
+          description: Número de WhatsApp do colaborador
+        is_active:
+          type: boolean
+          description: Se o colaborador está ativo e pode receber atribuições
+
     Erro:
       type: object
       properties:
@@ -774,6 +791,139 @@ paths:
       responses:
         '200':
           description: Sumário de métricas
+
+  # ── Sellers ────────────────────────────────────────────────────────────────
+
+  /sellers:
+    get:
+      operationId: listSellers
+      summary: Listar colaboradores
+      description: Retorna todos os colaboradores da loja.
+      tags: [Colaboradores]
+      responses:
+        '200':
+          description: Lista de colaboradores
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Seller'
+
+    post:
+      operationId: createSeller
+      summary: Criar colaborador
+      description: Cria um novo colaborador na loja.
+      tags: [Colaboradores]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, whatsapp_id]
+              properties:
+                name:
+                  type: string
+                  example: "Ana Lima"
+                whatsapp_id:
+                  type: string
+                  description: Número de WhatsApp do colaborador
+                  example: "5511988887777"
+      responses:
+        '201':
+          description: Colaborador criado com sucesso
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Seller'
+        '400':
+          description: Dados inválidos
+
+  /sellers/{sellerId}:
+    get:
+      operationId: getSeller
+      summary: Buscar colaborador
+      description: Retorna os dados de um colaborador pelo ID.
+      tags: [Colaboradores]
+      parameters:
+        - name: sellerId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Colaborador encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Seller'
+        '404':
+          description: Colaborador não encontrado
+
+    patch:
+      operationId: updateSeller
+      summary: Atualizar colaborador
+      description: Atualiza nome, WhatsApp ou status ativo de um colaborador.
+      tags: [Colaboradores]
+      parameters:
+        - name: sellerId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                whatsapp_id:
+                  type: string
+                is_active:
+                  type: boolean
+                  description: "false para desativar sem remover o histórico"
+      responses:
+        '200':
+          description: Colaborador atualizado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Seller'
+
+    delete:
+      operationId: deleteSeller
+      summary: Remover colaborador
+      description: Remove permanentemente um colaborador. Leads atribuídos ficam sem responsável. Prefira desativar com `is_active false`.
+      tags: [Colaboradores]
+      parameters:
+        - name: sellerId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Colaborador removido
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  deleted:
+                    type: boolean
+                  id:
+                    type: string
+                    format: uuid
+        '404':
+          description: Colaborador não encontrado
 
   # ── Store ──────────────────────────────────────────────────────────────────
 

@@ -50,6 +50,7 @@
               "guides/messaging",
               "guides/followups",
               "guides/agents",
+              "guides/sellers",
               "guides/webhooks"
             ]
           }
@@ -103,6 +104,16 @@
             "pages": [
               "api-reference/reports/leads",
               "api-reference/reports/summary"
+            ]
+          },
+          {
+            "group": "Colaboradores",
+            "pages": [
+              "api-reference/sellers/list",
+              "api-reference/sellers/create",
+              "api-reference/sellers/get",
+              "api-reference/sellers/update",
+              "api-reference/sellers/delete"
             ]
           },
           {
