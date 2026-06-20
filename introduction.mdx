@@ -49,23 +49,27 @@ Gere sua chave em **Plataforma → Integrações → API Keys**.
 
 ## Disponibilidade por plano
 
-| Recurso | Growth | Enterprise | Enterprise Plus |
-|---|:---:|:---:|:---:|
-| Leads (leitura e escrita) | ✅ | ✅ | ✅ |
-| Envio de mensagens | ✅ | ✅ | ✅ |
-| Follow-ups | ✅ | ✅ | ✅ |
-| Agentes de IA | — | ✅ | ✅ |
-| Base de conhecimento | — | ✅ | ✅ |
-| Relatórios | — | ✅ | ✅ |
-| Webhooks | — | ✅ | ✅ |
+A API pública está disponível **apenas para planos Premium**. Planos Low Ticket não possuem acesso à API.
+
+| Recurso | Starter | Growth | Enterprise | Enterprise Plus |
+|---|:---:|:---:|:---:|:---:|
+| Leads (leitura e escrita) | ✅ | ✅ | ✅ | ✅ |
+| Envio de mensagens | ✅ | ✅ | ✅ | ✅ |
+| Follow-ups | — | ✅ | ✅ | ✅ |
+| Base de conhecimento | — | ✅ | ✅ | ✅ |
+| Agentes de IA | — | — | ✅ | ✅ |
+| Relatórios | — | — | ✅ | ✅ |
+| Webhooks (eventos de saída) | ✅ (2) | ✅ (5) | ilimitado | ilimitado |
+| API Keys permitidas | 1 | 3 | ilimitado | ilimitado |
 
 ## Limites de taxa
 
-| Plano | Requisições/min | Mensagens/dia |
-|---|---|---|
-| Growth | 60 | 500 |
-| Enterprise | 300 | 5.000 |
-| Enterprise Plus | 1.000 | ilimitado |
+| Plano | Req/s |
+|---|---|
+| Starter | 5 |
+| Growth | 20 |
+| Enterprise | 60 |
+| Enterprise Plus | 150 |
 
 Quando o limite é atingido, a API retorna `429 Too Many Requests`. O header `Retry-After` indica em quantos segundos você pode tentar novamente.
 
