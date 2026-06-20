@@ -1,0 +1,328 @@
+---
+title: Integrações No-Code
+description: Templates prontos para conectar a Cordialy ao n8n, Zapier e Make sem escrever código
+---
+
+Use ferramentas de automação visual para conectar a Cordialy com centenas de outros sistemas — CRMs, planilhas, Slack, e-mail e muito mais.
+
+<CardGroup cols={3}>
+  <Card title="n8n" icon="code" href="#n8n">
+    Self-hosted ou cloud. Template JSON importável.
+  </Card>
+  <Card title="Zapier" icon="bolt" href="#zapier">
+    Mais de 6.000 apps conectados. Setup guiado.
+  </Card>
+  <Card title="Make (Integromat)" icon="arrow-right-arrow-left" href="#make">
+    Visual e poderoso. Cenários complexos com branching.
+  </Card>
+</CardGroup>
+
+---
+
+## n8n
+
+### Como importar um template
+
+1. No n8n, clique em **+** para criar um novo workflow
+2. Clique nos três pontos (**⋮**) → **Import from JSON**
+3. Cole o JSON do template abaixo
+4. Configure as credenciais (URL do webhook + API Key da Cordialy)
+5. Ative o workflow
+
+---
+
+### Template 1 — Lead convertido → notificar no Slack
+
+Quando a Cordialy envia o evento `lead.status_changed` com `new_status = converted`, envia uma mensagem no Slack para o canal de vendas.
+
+<Accordion title="Importar JSON no n8n">
+```json
+{
+  "name": "Cordialy → Slack (lead convertido)",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "cordialy-webhook",
+        "responseMode": "immediatelyOnReceive",
+        "options": {}
+      },
+      "id": "webhook-trigger",
+      "name": "Webhook Cordialy",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [240, 300],
+      "webhookId": "cordialy-lead-events"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true },
+          "combinator": "and",
+          "conditions": [
+            {
+              "leftValue": "={{ $json.body.event }}",
+              "rightValue": "lead.status_changed",
+              "operator": { "type": "string", "operation": "equals" }
+            },
+            {
+              "leftValue": "={{ $json.body.data.new_status }}",
+              "rightValue": "converted",
+              "operator": { "type": "string", "operation": "equals" }
+            }
+          ]
+        }
+      },
+      "id": "filter-converted",
+      "name": "Apenas conversões",
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 1,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "url": "=https://api.cordialy.ai/integrations/v1/leads/{{ $json.body.data.lead_id }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {}
+      },
+      "id": "get-lead",
+      "name": "Buscar dados do lead",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [680, 300],
+      "credentials": {
+        "httpHeaderAuth": { "id": "cordialy-api-key", "name": "Cordialy API Key" }
+      }
+    },
+    {
+      "parameters": {
+        "select": "channel",
+        "channelId": { "value": "#vendas" },
+        "text": "=🎉 *Lead convertido!*\n\n*Nome:* {{ $json.name || 'Sem nome' }}\n*Telefone:* {{ $json.customer_phone }}\n*Lead ID:* {{ $json.id }}",
+        "otherOptions": {}
+      },
+      "id": "slack-notify",
+      "name": "Notificar no Slack",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.2,
+      "position": [900, 300],
+      "credentials": {
+        "slackApi": { "id": "slack-creds", "name": "Slack" }
+      }
+    }
+  ],
+  "connections": {
+    "Webhook Cordialy": {
+      "main": [[{ "node": "Apenas conversões", "type": "main", "index": 0 }]]
+    },
+    "Apenas conversões": {
+      "main": [[{ "node": "Buscar dados do lead", "type": "main", "index": 0 }]]
+    },
+    "Buscar dados do lead": {
+      "main": [[{ "node": "Notificar no Slack", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": { "executionOrder": "v1" }
+}
+```
+</Accordion>
+
+**Fluxo:**
+```
+Webhook Cordialy → Filtro (lead.status_changed + converted) → Buscar lead → Slack #vendas
+```
+
+---
+
+### Template 2 — Nova mensagem recebida → criar tarefa no Notion
+
+Quando um lead envia mensagem, cria automaticamente uma tarefa de acompanhamento no Notion.
+
+<Accordion title="Importar JSON no n8n">
+```json
+{
+  "name": "Cordialy → Notion (nova mensagem)",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "cordialy-mensagens",
+        "responseMode": "immediatelyOnReceive",
+        "options": {}
+      },
+      "id": "webhook-trigger",
+      "name": "Webhook Cordialy",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [240, 300],
+      "webhookId": "cordialy-message-events"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "combinator": "and",
+          "conditions": [
+            {
+              "leftValue": "={{ $json.body.event }}",
+              "rightValue": "message.received",
+              "operator": { "type": "string", "operation": "equals" }
+            }
+          ]
+        }
+      },
+      "id": "filter-message",
+      "name": "Apenas mensagens recebidas",
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 1,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "resource": "databasePage",
+        "operation": "create",
+        "databaseId": { "value": "SEU_DATABASE_ID_NOTION" },
+        "title": "=Mensagem de {{ $json.body.data.lead_id }}",
+        "propertiesUi": {
+          "propertyValues": [
+            {
+              "key": "Conteúdo",
+              "textValue": "={{ $json.body.data.content }}"
+            },
+            {
+              "key": "Lead ID",
+              "textValue": "={{ $json.body.data.lead_id }}"
+            },
+            {
+              "key": "Status",
+              "selectValue": "Pendente"
+            }
+          ]
+        }
+      },
+      "id": "notion-create",
+      "name": "Criar tarefa no Notion",
+      "type": "n8n-nodes-base.notion",
+      "typeVersion": 2.2,
+      "position": [680, 300],
+      "credentials": {
+        "notionApi": { "id": "notion-creds", "name": "Notion" }
+      }
+    }
+  ],
+  "connections": {
+    "Webhook Cordialy": {
+      "main": [[{ "node": "Apenas mensagens recebidas", "type": "main", "index": 0 }]]
+    },
+    "Apenas mensagens recebidas": {
+      "main": [[{ "node": "Criar tarefa no Notion", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": { "executionOrder": "v1" }
+}
+```
+</Accordion>
+
+### Configurar credenciais no n8n
+
+Após importar, configure:
+
+| Credencial | Tipo no n8n | O que preencher |
+|---|---|---|
+| Cordialy API Key | HTTP Header Auth | Header: `X-API-Key`, Value: sua chave |
+| Slack | Slack API | Bot Token |
+| Notion | Notion API | Integration Token |
+
+<Info>
+  A URL do webhook gerada pelo n8n será algo como `https://seu-n8n.com/webhook/cordialy-webhook`. Cole essa URL em **Plataforma → Integrações → Webhooks**.
+</Info>
+
+---
+
+## Zapier
+
+O Zapier não tem integração nativa com a Cordialy, mas você pode conectar usando **Webhooks by Zapier** (trigger) e **HTTP by Zapier** (actions).
+
+### Cenário: Lead convertido → atualizar Google Sheets
+
+**Passo 1 — Criar o Zap**
+
+1. Acesse [zapier.com](https://zapier.com) → **Create Zap**
+
+**Passo 2 — Trigger: Webhooks by Zapier**
+
+1. Busque por **Webhooks by Zapier**
+2. Evento: **Catch Hook**
+3. Copie a URL gerada (ex: `https://hooks.zapier.com/hooks/catch/123456/abcdef/`)
+4. Cole essa URL em **Plataforma → Integrações → Webhooks**
+5. Dispare um evento de teste na plataforma para o Zapier detectar a estrutura
+
+**Passo 3 — Filter (apenas conversões)**
+
+1. Adicione um step **Filter by Zapier**
+2. Condição: `event` **is exactly** `lead.status_changed`
+3. E: `data__new_status` **is exactly** `converted`
+
+**Passo 4 — Action: Google Sheets**
+
+1. Busque por **Google Sheets**
+2. Evento: **Create Spreadsheet Row**
+3. Mapeie os campos:
+   - Coluna A → `data__lead_id`
+   - Coluna B → `timestamp`
+   - Coluna C → `data__previous_status`
+   - Coluna D → `converted`
+
+**Passo 5 — Testar e ativar**
+
+1. Clique em **Test & Continue** em cada step
+2. Clique em **Publish Zap**
+
+---
+
+### Outros Zaps úteis
+
+| Trigger (Cordialy) | Action |
+|---|---|
+| `lead.created` | Criar contato no HubSpot / Pipedrive |
+| `lead.status_changed → converted` | Adicionar linha no Google Sheets |
+| `message.received` | Enviar e-mail de alerta via Gmail |
+| `session.ended` | Criar deal no CRM |
+| `followup.sent` | Registrar atividade no Salesforce |
+
+---
+
+## Make (Integromat)
+
+### Cenário: Lead criado → adicionar ao Mailchimp
+
+**Passo 1 — Criar Scenario**
+
+1. Acesse [make.com](https://make.com) → **Create a new scenario**
+
+**Passo 2 — Módulo de trigger: Webhooks**
+
+1. Busque por **Webhooks** → **Custom webhook**
+2. Clique em **Add** → copie a URL
+3. Cole em **Plataforma → Integrações → Webhooks**
+4. Envie um evento de teste para o Make detectar a estrutura do payload
+
+**Passo 3 — Router (opcional)**
+
+Adicione um **Router** para tratar múltiplos eventos no mesmo webhook:
+- Rota 1: `event = lead.created` → Mailchimp
+- Rota 2: `event = lead.status_changed` → Google Sheets
+- Rota 3: `event = message.received` → Slack
+
+**Passo 4 — Módulo de action: Mailchimp**
+
+1. Busque por **Mailchimp** → **Add/Update a Subscriber**
+2. Mapeie: Email → `data.email` (se disponível), Tags → `cordialy-lead`
+
+**Passo 5 — Ativar o Scenario**
+
+Toggle o cenário para **ON** e defina o intervalo (recomendado: instantâneo via webhook).
+
+<Tip>
+  No Make, use o módulo **HTTP → Make a request** para chamar qualquer endpoint da Cordialy API dentro dos seus cenários — enviar mensagens, atualizar status de leads, agendar follow-ups, etc.
+</Tip>

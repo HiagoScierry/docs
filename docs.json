@@ -61,7 +61,8 @@
               "examples/webhook-receiver",
               "examples/crm-sync",
               "examples/notifications",
-              "examples/followups-automation"
+              "examples/followups-automation",
+              "examples/nocode"
             ]
           }
         ]
