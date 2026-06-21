@@ -43,123 +43,169 @@ Todo evento segue a mesma estrutura de envelope:
 
 ## Payloads por evento
 
+Os exemplos abaixo mostram o JSON completo recebido no seu endpoint, incluindo o envelope.
+
 ### `lead.created`
+
+Disparado quando um novo lead entra no sistema via WhatsApp ou API.
 
 ```json
 {
-  "id": "evt_01HX...",
-  "event": "lead.created",
-  "timestamp": "2026-06-20T09:00:00.000Z",
-  "store_id": "...",
-  "data": {
-    "lead_id": "uuid",
+  "event_type": "lead.created",
+  "store_id": "uuid-da-loja",
+  "occurred_at": "2026-06-20T09:00:00.000Z",
+  "payload": {
+    "id": "uuid-do-lead",
     "name": "João Silva",
     "customer_phone": "5511999998888",
     "status": "pending",
-    "seller_id": null
+    "created_at": "2026-06-20T09:00:00.000Z"
   }
 }
 ```
 
 ### `lead.status_changed`
 
-```json
-{
-  "event": "lead.status_changed",
-  "data": {
-    "lead_id": "uuid",
-    "previous_status": "pending",
-    "new_status": "in_progress",
-    "seller_id": "uuid-ou-null"
-  }
-}
-```
-
-### `lead.seller_assigned`
+Disparado quando o status do lead muda (ex: `pending` → `in_progress`, `in_progress` → `converted`).
 
 ```json
 {
-  "event": "lead.seller_assigned",
-  "data": {
-    "lead_id": "uuid",
-    "seller_id": "uuid",
-    "seller_name": "Ana Lima"
+  "event_type": "lead.status_changed",
+  "store_id": "uuid-da-loja",
+  "occurred_at": "2026-06-20T10:30:00.000Z",
+  "payload": {
+    "id": "uuid-do-lead",
+    "status": "converted",
+    "previous_status": "in_progress",
+    "changed_at": "2026-06-20T10:30:00.000Z"
   }
 }
 ```
 
 ### `message.received`
 
+Disparado quando o lead envia uma mensagem via WhatsApp.
+
 ```json
 {
-  "event": "message.received",
-  "data": {
-    "lead_id": "uuid",
-    "message_id": "uuid",
+  "event_type": "message.received",
+  "store_id": "uuid-da-loja",
+  "occurred_at": "2026-06-20T09:05:00.000Z",
+  "payload": {
+    "lead_id": "uuid-do-lead",
+    "session_id": "uuid-da-sessao",
     "content": "Olá, quero saber o preço",
     "media_type": null,
-    "media_url": null,
-    "session_id": "uuid"
+    "received_at": "2026-06-20T09:05:00.000Z"
   }
 }
 ```
 
+| Campo | Valores possíveis de `media_type` |
+|---|---|
+| `media_type` | `null` (texto) · `image` · `audio` · `video` · `document` |
+
 ### `message.sent`
+
+Disparado quando a IA ou um consultor envia uma mensagem ao lead.
 
 ```json
 {
-  "event": "message.sent",
-  "data": {
-    "lead_id": "uuid",
-    "message_id": "uuid",
+  "event_type": "message.sent",
+  "store_id": "uuid-da-loja",
+  "occurred_at": "2026-06-20T09:05:03.000Z",
+  "payload": {
+    "lead_id": "uuid-do-lead",
+    "session_id": "uuid-da-sessao",
     "content": "Olá! O valor é R$ 99/mês.",
-    "role": "assistant",
-    "source": "whatsapp",
-    "session_id": "uuid"
+    "sent_at": "2026-06-20T09:05:03.000Z"
   }
 }
 ```
 
 ### `session.started`
 
+Disparado quando uma nova sessão de atendimento é aberta para o lead.
+
 ```json
 {
-  "event": "session.started",
-  "data": {
-    "lead_id": "uuid",
-    "session_id": "uuid",
+  "event_type": "session.started",
+  "store_id": "uuid-da-loja",
+  "occurred_at": "2026-06-20T09:00:00.000Z",
+  "payload": {
+    "id": "uuid-da-sessao",
+    "lead_id": "uuid-do-lead",
+    "session_number": 1,
+    "channel": "whatsapp_zapi",
+    "trigger": "inbound",
     "started_at": "2026-06-20T09:00:00.000Z"
   }
 }
 ```
 
+| Campo | Valores possíveis |
+|---|---|
+| `channel` | `whatsapp_zapi` · `whatsapp_meta` · `voice_elevenlabs` · `manual` |
+| `trigger` | `inbound` · `followup` · `manual_reopen` |
+
 ### `session.ended`
+
+Disparado quando uma sessão de atendimento é encerrada.
 
 ```json
 {
-  "event": "session.ended",
-  "data": {
-    "lead_id": "uuid",
-    "session_id": "uuid",
+  "event_type": "session.ended",
+  "store_id": "uuid-da-loja",
+  "occurred_at": "2026-06-20T14:30:00.000Z",
+  "payload": {
+    "id": "uuid-da-sessao",
+    "lead_id": "uuid-do-lead",
+    "session_number": 1,
     "status": "converted",
-    "started_at": "2026-06-20T09:00:00.000Z",
-    "ended_at": "2026-06-20T14:30:00.000Z",
-    "message_count": 24
+    "ended_at": "2026-06-20T14:30:00.000Z"
   }
 }
 ```
 
+| Campo | Valores possíveis de `status` |
+|---|---|
+| `status` | `converted` · `lost` · `abandoned` |
+
 ### `followup.sent`
+
+Disparado quando um follow-up automático é enviado ao lead.
 
 ```json
 {
-  "event": "followup.sent",
-  "data": {
-    "lead_id": "uuid",
-    "followup_id": "uuid",
-    "config_id": "uuid",
-    "message_sent": "Oi! Ainda tem interesse?",
-    "attempt_number": 1
+  "event_type": "followup.sent",
+  "store_id": "uuid-da-loja",
+  "occurred_at": "2026-06-21T10:00:00.000Z",
+  "payload": {
+    "followup_id": "uuid-do-followup",
+    "lead_id": "uuid-do-lead",
+    "session_id": "uuid-da-sessao",
+    "message": "Oi! Ainda tem interesse?",
+    "sent_at": "2026-06-21T10:00:00.000Z"
+  }
+}
+```
+
+### `appointment.created`
+
+Disparado quando um agendamento é criado para um lead.
+
+```json
+{
+  "event_type": "appointment.created",
+  "store_id": "uuid-da-loja",
+  "occurred_at": "2026-06-20T11:00:00.000Z",
+  "payload": {
+    "id": "uuid-do-agendamento",
+    "lead_id": "uuid-do-lead",
+    "title": "Consulta inicial",
+    "scheduled_at": "2026-06-25T15:00:00.000Z",
+    "duration_minutes": 60,
+    "status": "scheduled"
   }
 }
 ```
