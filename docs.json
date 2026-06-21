@@ -73,7 +73,10 @@
           {
             "group": "Referência",
             "pages": [
-              "webhooks/overview"
+              "webhooks/overview",
+              "webhooks/events",
+              "webhooks/security",
+              "webhooks/delivery"
             ]
           }
         ]

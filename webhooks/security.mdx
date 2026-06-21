@@ -1,0 +1,121 @@
+---
+title: Assinatura & Segurança
+description: Como validar que os eventos recebidos vieram da Cordialy usando HMAC-SHA256
+---
+
+Cada requisição inclui o header `X-Cordialy-Signature` com uma assinatura HMAC-SHA256 do corpo. Valide essa assinatura antes de processar qualquer evento.
+
+```
+X-Cordialy-Signature: sha256=abc123...
+```
+
+## Webhook Secret
+
+O secret é gerado automaticamente quando você cadastra um webhook em **Integrações → Webhooks**. Ele é exibido **uma única vez** logo após a criação — copie e guarde em um local seguro.
+
+<Warning>
+  Se você perder o secret, não é possível recuperá-lo. Delete o webhook e crie um novo para gerar um secret diferente.
+</Warning>
+
+## Como validar
+
+A assinatura é calculada sobre o **body bruto** (bytes exatos recebidos na requisição).
+
+<Warning>
+  Se você parsear o body antes de validar (ex: `express.json()` no Node.js), o body já foi transformado e a assinatura não vai bater. Leia o body como stream/raw antes de qualquer parsing.
+</Warning>
+
+<CodeGroup>
+```typescript Node.js (Express)
+import crypto from 'crypto';
+import express from 'express';
+
+const app = express();
+
+// IMPORTANTE: use express.raw() na rota do webhook, não express.json()
+app.post('/webhook/cordialy', express.raw({ type: 'application/json' }), (req, res) => {
+  const signature = req.headers['x-cordialy-signature'] as string;
+  const secret = process.env.CORDIALY_WEBHOOK_SECRET!;
+
+  if (!validarAssinatura(req.body, signature, secret)) {
+    return res.status(401).send('Assinatura inválida');
+  }
+
+  const evento = JSON.parse(req.body.toString());
+  // processar evento...
+
+  res.status(200).send('ok');
+});
+
+function validarAssinatura(rawBody: Buffer, signature: string, secret: string): boolean {
+  const esperado = 'sha256=' + crypto
+    .createHmac('sha256', secret)
+    .update(rawBody)
+    .digest('hex');
+
+  return crypto.timingSafeEqual(
+    Buffer.from(signature),
+    Buffer.from(esperado)
+  );
+}
+```
+
+```python Python (FastAPI)
+import hmac
+import hashlib
+from fastapi import FastAPI, Request, HTTPException
+
+app = FastAPI()
+
+@app.post('/webhook/cordialy')
+async def receber_webhook(request: Request):
+    # IMPORTANTE: leia o body bruto ANTES de qualquer parsing
+    raw_body = await request.body()
+    signature = request.headers.get('x-cordialy-signature', '')
+    secret = os.environ['CORDIALY_WEBHOOK_SECRET']
+
+    if not validar_assinatura(raw_body, signature, secret):
+        raise HTTPException(status_code=401, detail='Assinatura inválida')
+
+    evento = json.loads(raw_body)
+    # processar evento...
+
+    return {'ok': True}
+
+def validar_assinatura(raw_body: bytes, signature: str, secret: str) -> bool:
+    esperado = 'sha256=' + hmac.new(
+        secret.encode('utf-8'),
+        raw_body,
+        hashlib.sha256
+    ).hexdigest()
+    return hmac.compare_digest(signature, esperado)
+```
+
+```php PHP
+<?php
+// IMPORTANTE: use getContent(), não $request->input() nem $_POST
+function handleWebhook(Request $request) {
+    $rawBody = $request->getContent();
+    $signature = $request->header('X-Cordialy-Signature');
+    $secret = env('CORDIALY_WEBHOOK_SECRET');
+
+    if (!validarAssinatura($rawBody, $signature, $secret)) {
+        return response('Assinatura inválida', 401);
+    }
+
+    $evento = json_decode($rawBody, true);
+    // processar evento...
+
+    return response('ok', 200);
+}
+
+function validarAssinatura(string $rawBody, string $signature, string $secret): bool {
+    $esperado = 'sha256=' . hash_hmac('sha256', $rawBody, $secret);
+    return hash_equals($esperado, $signature);
+}
+```
+</CodeGroup>
+
+## Por que `timingSafeEqual` / `compare_digest` / `hash_equals`?
+
+Comparações simples (`===`, `==`) são vulneráveis a ataques de timing — um atacante pode descobrir o secret medindo o tempo de resposta. As funções de comparação constante eliminam esse risco.

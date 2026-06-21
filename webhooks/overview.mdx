@@ -1,17 +1,28 @@
 ---
 title: Visão Geral
-description: Referência completa de webhooks — eventos, payloads, assinatura e retry
+description: O que são webhooks da Cordialy e como funcionam
 ---
 
-Webhooks são requisições HTTP `POST` que a Cordialy envia ao seu endpoint quando eventos acontecem na plataforma. Configure em **Plataforma → Integrações → Webhooks**.
+Webhooks são requisições HTTP `POST` enviadas automaticamente ao seu servidor quando eventos acontecem na plataforma. Configure em **Plataforma → Integrações → Webhooks**.
 
-## Estrutura do payload
+## Como funciona
 
-Todo evento segue a mesma estrutura de envelope:
+```
+Evento ocorre na Cordialy
+  → Cordialy enfileira a entrega
+  → POST para seu endpoint com payload JSON + assinatura
+  → Seu servidor processa e responde 2xx
+```
+
+Sem necessidade de polling — você recebe os dados em tempo real.
+
+## Estrutura do envelope
+
+Todo evento segue a mesma estrutura:
 
 ```json
 {
-  "event_type": "lead.status_changed",
+  "event_type": "lead.created",
   "store_id": "uuid-da-loja",
   "occurred_at": "2026-06-20T14:30:00.000Z",
   "payload": { ... }
@@ -20,10 +31,10 @@ Todo evento segue a mesma estrutura de envelope:
 
 | Campo | Tipo | Descrição |
 |---|---|---|
-| `event_type` | string | Nome do evento (ver tabela abaixo) |
+| `event_type` | string | Nome do evento |
 | `store_id` | uuid | ID da loja que gerou o evento |
 | `occurred_at` | ISO 8601 | Momento em que o evento ocorreu |
-| `payload` | object | Dados específicos do evento |
+| `payload` | object | Dados específicos do evento (ver [Eventos & Payloads](/webhooks/events)) |
 
 ## Eventos disponíveis
 
@@ -31,292 +42,26 @@ Todo evento segue a mesma estrutura de envelope:
 |---|---|
 | `lead.created` | Novo lead criado via WhatsApp ou API |
 | `lead.status_changed` | Status do lead alterado |
-| `lead.seller_assigned` | Colaborador atribuído ao lead |
 | `message.received` | Lead enviou mensagem via WhatsApp |
-| `message.sent` | IA, consultor ou API enviou mensagem |
+| `message.sent` | IA ou consultor enviou mensagem |
 | `session.started` | Nova sessão de atendimento aberta |
 | `session.ended` | Sessão de atendimento encerrada |
 | `followup.sent` | Follow-up automático disparado |
-| `followup.cancelled` | Follow-up cancelado |
+| `appointment.created` | Agendamento criado para o lead |
 
----
+## Próximos passos
 
-## Payloads por evento
-
-Os exemplos abaixo mostram o JSON completo recebido no seu endpoint, incluindo o envelope.
-
-### `lead.created`
-
-Disparado quando um novo lead entra no sistema via WhatsApp ou API.
-
-```json
-{
-  "event_type": "lead.created",
-  "store_id": "uuid-da-loja",
-  "occurred_at": "2026-06-20T09:00:00.000Z",
-  "payload": {
-    "id": "uuid-do-lead",
-    "name": "João Silva",
-    "customer_phone": "5511999998888",
-    "status": "pending",
-    "created_at": "2026-06-20T09:00:00.000Z"
-  }
-}
-```
-
-### `lead.status_changed`
-
-Disparado quando o status do lead muda (ex: `pending` → `in_progress`, `in_progress` → `converted`).
-
-```json
-{
-  "event_type": "lead.status_changed",
-  "store_id": "uuid-da-loja",
-  "occurred_at": "2026-06-20T10:30:00.000Z",
-  "payload": {
-    "id": "uuid-do-lead",
-    "status": "converted",
-    "previous_status": "in_progress",
-    "changed_at": "2026-06-20T10:30:00.000Z"
-  }
-}
-```
-
-### `message.received`
-
-Disparado quando o lead envia uma mensagem via WhatsApp.
-
-```json
-{
-  "event_type": "message.received",
-  "store_id": "uuid-da-loja",
-  "occurred_at": "2026-06-20T09:05:00.000Z",
-  "payload": {
-    "lead_id": "uuid-do-lead",
-    "session_id": "uuid-da-sessao",
-    "content": "Olá, quero saber o preço",
-    "media_type": null,
-    "received_at": "2026-06-20T09:05:00.000Z"
-  }
-}
-```
-
-| Campo | Valores possíveis de `media_type` |
-|---|---|
-| `media_type` | `null` (texto) · `image` · `audio` · `video` · `document` |
-
-### `message.sent`
-
-Disparado quando a IA ou um consultor envia uma mensagem ao lead.
-
-```json
-{
-  "event_type": "message.sent",
-  "store_id": "uuid-da-loja",
-  "occurred_at": "2026-06-20T09:05:03.000Z",
-  "payload": {
-    "lead_id": "uuid-do-lead",
-    "session_id": "uuid-da-sessao",
-    "content": "Olá! O valor é R$ 99/mês.",
-    "sent_at": "2026-06-20T09:05:03.000Z"
-  }
-}
-```
-
-### `session.started`
-
-Disparado quando uma nova sessão de atendimento é aberta para o lead.
-
-```json
-{
-  "event_type": "session.started",
-  "store_id": "uuid-da-loja",
-  "occurred_at": "2026-06-20T09:00:00.000Z",
-  "payload": {
-    "id": "uuid-da-sessao",
-    "lead_id": "uuid-do-lead",
-    "session_number": 1,
-    "channel": "whatsapp_zapi",
-    "trigger": "inbound",
-    "started_at": "2026-06-20T09:00:00.000Z"
-  }
-}
-```
-
-| Campo | Valores possíveis |
-|---|---|
-| `channel` | `whatsapp_zapi` · `whatsapp_meta` · `voice_elevenlabs` · `manual` |
-| `trigger` | `inbound` · `followup` · `manual_reopen` |
-
-### `session.ended`
-
-Disparado quando uma sessão de atendimento é encerrada.
-
-```json
-{
-  "event_type": "session.ended",
-  "store_id": "uuid-da-loja",
-  "occurred_at": "2026-06-20T14:30:00.000Z",
-  "payload": {
-    "id": "uuid-da-sessao",
-    "lead_id": "uuid-do-lead",
-    "session_number": 1,
-    "status": "converted",
-    "ended_at": "2026-06-20T14:30:00.000Z"
-  }
-}
-```
-
-| Campo | Valores possíveis de `status` |
-|---|---|
-| `status` | `converted` · `lost` · `abandoned` |
-
-### `followup.sent`
-
-Disparado quando um follow-up automático é enviado ao lead.
-
-```json
-{
-  "event_type": "followup.sent",
-  "store_id": "uuid-da-loja",
-  "occurred_at": "2026-06-21T10:00:00.000Z",
-  "payload": {
-    "followup_id": "uuid-do-followup",
-    "lead_id": "uuid-do-lead",
-    "session_id": "uuid-da-sessao",
-    "message": "Oi! Ainda tem interesse?",
-    "sent_at": "2026-06-21T10:00:00.000Z"
-  }
-}
-```
-
-### `appointment.created`
-
-Disparado quando um agendamento é criado para um lead.
-
-```json
-{
-  "event_type": "appointment.created",
-  "store_id": "uuid-da-loja",
-  "occurred_at": "2026-06-20T11:00:00.000Z",
-  "payload": {
-    "id": "uuid-do-agendamento",
-    "lead_id": "uuid-do-lead",
-    "title": "Consulta inicial",
-    "scheduled_at": "2026-06-25T15:00:00.000Z",
-    "duration_minutes": 60,
-    "status": "scheduled"
-  }
-}
-```
-
----
-
-## Assinatura e segurança
-
-Cada requisição inclui o header `X-Cordialy-Signature` com HMAC-SHA256 do payload usando seu **Webhook Secret**.
-
-```
-X-Cordialy-Signature: sha256=abc123...
-```
-
-### Onde encontrar o Webhook Secret
-
-O secret é gerado automaticamente quando você cadastra um webhook em **Integrações → Webhooks**. Ele é exibido **uma única vez** logo após a criação — copie e guarde em um local seguro.
-
-<Warning>
-  Se você perder o secret, não é possível recuperá-lo. Delete o webhook e crie um novo para gerar um secret diferente.
-</Warning>
-
-**Sempre valide a assinatura antes de processar o evento.**
-
-<Warning>
-  A assinatura é calculada sobre o **body bruto** (bytes exatos recebidos). Se você parsear o body antes de validar (ex: `express.json()` no Node.js ou leitura automática no framework), a assinatura não vai bater.
-
-  - **Node.js (Express):** use `express.raw({ type: 'application/json' })` na rota do webhook
-  - **PHP:** use `$request->getContent()` (não `$request->input()` nem `$_POST`)
-  - **Python (FastAPI/Django):** use `await request.body()` (não `request.json()`)
-</Warning>
-
-<CodeGroup>
-```typescript Node.js
-import crypto from 'crypto';
-
-// Na rota: app.post('/webhook', express.raw({ type: 'application/json' }), handler)
-function validarAssinatura(
-  rawBody: Buffer,
-  signature: string,
-  secret: string
-): boolean {
-  const esperado = 'sha256=' + crypto
-    .createHmac('sha256', secret)
-    .update(rawBody)
-    .digest('hex');
-
-  return crypto.timingSafeEqual(
-    Buffer.from(signature),
-    Buffer.from(esperado)
-  );
-}
-```
-
-```python Python
-import hmac
-import hashlib
-
-# Na rota: raw_body = await request.body()  (não request.json())
-def validar_assinatura(raw_body: bytes, signature: str, secret: str) -> bool:
-    esperado = 'sha256=' + hmac.new(
-        secret.encode('utf-8'),
-        raw_body,
-        hashlib.sha256
-    ).hexdigest()
-    return hmac.compare_digest(signature, esperado)
-```
-
-```php PHP
-// Use $request->getContent(), não $request->input() nem $_POST
-function validarAssinatura(string $rawBody, string $signature, string $secret): bool {
-    $esperado = 'sha256=' . hash_hmac('sha256', $rawBody, $secret);
-    return hash_equals($esperado, $signature);
-}
-```
-</CodeGroup>
-
----
-
-## Política de retry
-
-Se seu endpoint retornar status diferente de `2xx`, a Cordialy reenvia automaticamente:
-
-| Tentativa | Delay | Total decorrido |
-|---|---|---|
-| 1ª (inicial) | — | 0s |
-| 2ª | 1 minuto | ~1min |
-| 3ª | 5 minutos | ~6min |
-| 4ª | 30 minutos | ~36min |
-| 5ª | 2 horas | ~2h36min |
-
-Após 5 tentativas sem `2xx`, o evento é descartado. O histórico de entregas fica disponível no dashboard.
-
----
-
-## Requisitos do endpoint
-
-| Requisito | Detalhe |
-|---|---|
-| Protocolo | HTTPS obrigatório com certificado válido |
-| Timeout | Máximo 10 segundos para retornar `2xx` |
-| Método | Sempre `POST` |
-| Content-Type | `application/json` |
-| Idempotência | Seu handler deve tolerar eventos duplicados (use o campo `id`) |
-
----
-
-## Testar seu endpoint
-
-Use o dashboard em **Integrações → Webhooks → Testar** para enviar um evento de exemplo para o seu endpoint sem precisar gerar o evento real na plataforma.
-
-<Tip>
-  Durante o desenvolvimento, use ferramentas como [ngrok](https://ngrok.com) ou [webhook.site](https://webhook.site) para expor seu servidor local e inspecionar os payloads recebidos.
-</Tip>
+<CardGroup cols={2}>
+  <Card title="Eventos & Payloads" icon="brackets-curly" href="/webhooks/events">
+    JSON completo de cada tipo de evento
+  </Card>
+  <Card title="Assinatura & Segurança" icon="shield-check" href="/webhooks/security">
+    Como validar que o evento veio da Cordialy
+  </Card>
+  <Card title="Entrega & Retry" icon="rotate" href="/webhooks/delivery">
+    Política de reenvio e requisitos do endpoint
+  </Card>
+  <Card title="Exemplo de receiver" icon="code" href="/examples/webhook-receiver">
+    Código pronto para receber webhooks
+  </Card>
+</CardGroup>
